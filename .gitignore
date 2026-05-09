@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+# PyInstaller build output
+build/
+dist/
+*.spec
+
+# App data (user-specific, not versioned)
+bookmarks.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
