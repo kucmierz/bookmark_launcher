@@ -7,7 +7,7 @@ Layout: header bar (search + buttons) / left panel (categories + sequences)
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QSplitter, QPushButton, QLineEdit, QFrame,
-    QMessageBox,
+    QMessageBox, QMenu,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -22,6 +22,7 @@ from core.data_store import DataStore
 from core.launcher import launch_sequence
 from ui.widgets.bookmark_list import BookmarkList
 from ui.widgets.category_panel import CategoryPanel
+from ui.dialogs.bookmark_dialog import BookmarkDialog
 
 
 class MainWindow(QMainWindow):
@@ -66,6 +67,7 @@ class MainWindow(QMainWindow):
         self.btn_add = QPushButton("＋  Add")
         self.btn_add.setFixedHeight(32)
         self.btn_add.setObjectName("PrimaryButton")
+        self.btn_add.clicked.connect(self._on_add_bookmark)
         layout.addWidget(self.btn_add)
 
         self.btn_settings = QPushButton("⚙")
@@ -119,6 +121,8 @@ class MainWindow(QMainWindow):
 
         self.bookmark_list = BookmarkList(self.store)
         self.bookmark_list.launch_error.connect(self._on_launch_error)
+        self.bookmark_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.bookmark_list.customContextMenuRequested.connect(self._on_bookmark_context_menu)
         layout.addWidget(self.bookmark_list, stretch=1)
 
         return panel
@@ -154,5 +158,68 @@ class MainWindow(QMainWindow):
 
     def _on_launch_error(self, message: str) -> None:
         QMessageBox.warning(self, "Could not open", message)
+
+    def _on_add_bookmark(self) -> None:
+        dlg = BookmarkDialog(self.store, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_edit_bookmark(self, bm_id: str) -> None:
+        bm = self.store.get_bookmark(bm_id)
+        if bm is None:
+            return
+        dlg = BookmarkDialog(self.store, bookmark=bm, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_delete_bookmark(self, bm_id: str) -> None:
+        bm = self.store.get_bookmark(bm_id)
+        if bm is None:
+            return
+        answer = QMessageBox.question(
+            self,
+            "Delete bookmark",
+            f"Delete  \"{bm.name}\"?\nThis cannot be undone.",
+            QMessageBox.Yes | QMessageBox.Cancel,
+        )
+        if answer == QMessageBox.Yes:
+            self.store.delete_bookmark(bm_id)
+            self._refresh_all()
+
+    def _on_bookmark_context_menu(self, pos) -> None:
+        bm = self.bookmark_list.selected_bookmark()
+        if bm is None:
+            return
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #313244;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 6px 24px 6px 12px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #45475a;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #45475a;
+                margin: 4px 0;
+            }
+        """)
+        edit_action = menu.addAction("✏  Edit")
+        menu.addSeparator()
+        delete_action = menu.addAction("🗑  Delete")
+
+        action = menu.exec(self.bookmark_list.mapToGlobal(pos))
+        if action == edit_action:
+            self._on_edit_bookmark(bm.id)
+        elif action == delete_action:
+            self._on_delete_bookmark(bm.id)
 
 
