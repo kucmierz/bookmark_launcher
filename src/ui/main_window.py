@@ -7,8 +7,9 @@ Layout: header bar (search + buttons) / left panel (categories + sequences)
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QSplitter, QLabel, QPushButton, QLineEdit, QFrame,
+    QMessageBox,
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 
 from config import (
@@ -18,12 +19,14 @@ from config import (
     LEFT_PANEL_WIDTH,
 )
 from core.data_store import DataStore
+from ui.widgets.bookmark_list import BookmarkList
 
 
 class MainWindow(QMainWindow):
     def __init__(self, store: DataStore) -> None:
         super().__init__()
         self.store = store
+        self._active_category_id: str | None = None  # None = show all
 
         self.setWindowTitle(APP_NAME)
         self.setMinimumSize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
@@ -38,6 +41,8 @@ class MainWindow(QMainWindow):
 
         root_layout.addWidget(self._build_header())
         root_layout.addWidget(self._build_body(), stretch=1)
+
+        self._refresh_bookmarks()
 
     # ── Header ───────────────────────────────────────────────────────
 
@@ -72,15 +77,13 @@ class MainWindow(QMainWindow):
 
     def _build_body(self) -> QSplitter:
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(1)       # thin divider line
+        splitter.setHandleWidth(1)
         splitter.setChildrenCollapsible(False)
 
         splitter.addWidget(self._build_left_panel())
         splitter.addWidget(self._build_right_panel())
 
-        # Set initial widths: left panel fixed-ish, right takes the rest
         splitter.setSizes([LEFT_PANEL_WIDTH, WINDOW_DEFAULT_WIDTH - LEFT_PANEL_WIDTH])
-
         return splitter
 
     # ── Left panel ───────────────────────────────────────────────────
@@ -117,15 +120,26 @@ class MainWindow(QMainWindow):
         panel.setObjectName("RightPanel")
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        self.bookmark_placeholder = QLabel("No bookmarks yet.\nClick  ＋ Add  to get started.")
-        self.bookmark_placeholder.setAlignment(Qt.AlignCenter)
-        self.bookmark_placeholder.setObjectName("EmptyStateLabel")
-        layout.addWidget(self.bookmark_placeholder, stretch=1)
+        self.bookmark_list = BookmarkList(self.store)
+        self.bookmark_list.launch_error.connect(self._on_launch_error)
+        layout.addWidget(self.bookmark_list, stretch=1)
 
         return panel
+
+    # ── Data refresh ─────────────────────────────────────────────────
+
+    def _refresh_bookmarks(self) -> None:
+        """Reload bookmark list from store, respecting active category filter."""
+        bookmarks = self.store.get_bookmarks(self._active_category_id)
+        self.bookmark_list.load(bookmarks)
+
+    # ── Slots ────────────────────────────────────────────────────────
+
+    def _on_launch_error(self, message: str) -> None:
+        QMessageBox.warning(self, "Could not open", message)
 
     # ── Helpers ──────────────────────────────────────────────────────
 
