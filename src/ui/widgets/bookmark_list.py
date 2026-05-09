@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
     QLabel, QHBoxLayout, QFrame,
 )
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QEvent
 from PySide6.QtGui import QIcon, QColor
 
 from core.models import Bookmark, Tag
@@ -40,7 +40,9 @@ class BookmarkList(QWidget):
         self.list_widget.setStyleSheet(self._list_style())
 
         self.list_widget.itemDoubleClicked.connect(self._on_item_activated)
-        self.list_widget.itemActivated.connect(self._on_item_activated)
+        # itemActivated fires on both Enter AND double-click — would cause double launch.
+        # We handle keyboard separately via key press filter instead.
+        self.list_widget.installEventFilter(self)
 
         self.empty_label = QLabel("No bookmarks yet.\nClick  ＋ Add  to get started.")
         self.empty_label.setAlignment(Qt.AlignCenter)
@@ -101,6 +103,15 @@ class BookmarkList(QWidget):
         item.setSizeHint(QSize(0, 36))
 
         return item
+
+    def eventFilter(self, source: object, event: QEvent) -> bool:
+        if source is self.list_widget and event.type() == QEvent.KeyPress:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                item = self.list_widget.currentItem()
+                if item:
+                    self._on_item_activated(item)
+                return True
+        return super().eventFilter(source, event)
 
     # ── Launch ───────────────────────────────────────────────────────
 
