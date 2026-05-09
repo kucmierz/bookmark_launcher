@@ -121,6 +121,7 @@ class MainWindow(QMainWindow):
 
         self.bookmark_list = BookmarkList(self.store)
         self.bookmark_list.launch_error.connect(self._on_launch_error)
+        self.bookmark_list.drop_requested.connect(self._on_drop)
         self.bookmark_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.bookmark_list.customContextMenuRequested.connect(self._on_bookmark_context_menu)
         layout.addWidget(self.bookmark_list, stretch=1)
@@ -163,6 +164,34 @@ class MainWindow(QMainWindow):
         dlg = BookmarkDialog(self.store, parent=self)
         if dlg.exec():
             self._refresh_all()
+
+    def _on_drop(self, paths: list[str]) -> None:
+        """Open BookmarkDialog for each dropped path, pre-filled from path info."""
+        from pathlib import Path
+        from core.models import Bookmark
+
+        for path_str in paths:
+            path = Path(path_str)
+            if path.is_dir():
+                bm_type = "folder"
+            elif path.suffix.lower() in (".exe", ".bat", ".cmd", ".ps1"):
+                bm_type = "program"
+            else:
+                bm_type = "file"
+
+            prefilled = Bookmark(
+                id="",
+                name=path.stem.replace("_", " ").title(),
+                type=bm_type,
+                target=path_str,
+            )
+            dlg = BookmarkDialog(self.store, bookmark=prefilled, parent=self)
+            # Override title so it reads "Add" not "Edit" for dropped items
+            dlg.setWindowTitle("Add Bookmark")
+            # Save as new — clear the id so store treats it as new
+            dlg.bookmark = None
+            if dlg.exec():
+                self._refresh_all()
 
     def _on_edit_bookmark(self, bm_id: str) -> None:
         bm = self.store.get_bookmark(bm_id)

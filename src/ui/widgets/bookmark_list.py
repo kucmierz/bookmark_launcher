@@ -20,8 +20,9 @@ from utils.icons import get_icon, type_emoji
 class BookmarkList(QWidget):
     """Displays a filtered list of bookmarks. Emits launch_error on failure."""
 
-    launch_error = Signal(str)          # carries error message to main window
-    bookmark_launched = Signal(str)     # carries bookmark id
+    launch_error = Signal(str)       # error message → main window shows dialog
+    bookmark_launched = Signal(str)  # bookmark id after successful launch
+    drop_requested = Signal(list)    # list[str] of dropped local paths
 
     def __init__(self, store: DataStore, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -43,6 +44,9 @@ class BookmarkList(QWidget):
         # itemActivated fires on both Enter AND double-click — would cause double launch.
         # We handle keyboard separately via key press filter instead.
         self.list_widget.installEventFilter(self)
+
+        # Accept drops from Explorer onto the whole widget
+        self.setAcceptDrops(True)
 
         self.empty_label = QLabel("No bookmarks yet.\nClick  ＋ Add  to get started.")
         self.empty_label.setAlignment(Qt.AlignCenter)
@@ -127,6 +131,30 @@ class BookmarkList(QWidget):
             self.bookmark_launched.emit(bm_id)
         except (FileNotFoundError, OSError, ValueError) as e:
             self.launch_error.emit(str(e))
+
+    # ── Drag & drop ──────────────────────────────────────────────────
+
+    def dragEnterEvent(self, event) -> None:
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event) -> None:
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event) -> None:
+        paths = [
+            url.toLocalFile()
+            for url in event.mimeData().urls()
+            if url.isLocalFile()
+        ]
+        if paths:
+            event.acceptProposedAction()
+            self.drop_requested.emit(paths)
 
     # ── Stylesheet ───────────────────────────────────────────────────
 
