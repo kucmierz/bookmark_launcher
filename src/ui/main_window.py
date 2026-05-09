@@ -6,7 +6,7 @@ Layout: header bar (search + buttons) / left panel (categories + sequences)
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QSplitter, QLabel, QPushButton, QLineEdit, QFrame,
+    QSplitter, QPushButton, QLineEdit, QFrame,
     QMessageBox,
 )
 from PySide6.QtCore import Qt
@@ -19,7 +19,9 @@ from config import (
     LEFT_PANEL_WIDTH,
 )
 from core.data_store import DataStore
+from core.launcher import launch_sequence
 from ui.widgets.bookmark_list import BookmarkList
+from ui.widgets.category_panel import CategoryPanel
 
 
 class MainWindow(QMainWindow):
@@ -95,22 +97,14 @@ class MainWindow(QMainWindow):
         panel.setMaximumWidth(320)
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(0, 8, 0, 8)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        layout.addWidget(self._section_label("Categories"))
-        self.category_placeholder = QLabel("  (no categories yet)")
-        self.category_placeholder.setObjectName("PlaceholderLabel")
-        layout.addWidget(self.category_placeholder)
+        self.category_panel = CategoryPanel(self.store)
+        self.category_panel.category_selected.connect(self._on_category_selected)
+        self.category_panel.sequence_triggered.connect(self._on_sequence_triggered)
+        layout.addWidget(self.category_panel)
 
-        layout.addSpacing(16)
-
-        layout.addWidget(self._section_label("Sequences"))
-        self.sequence_placeholder = QLabel("  (no sequences yet)")
-        self.sequence_placeholder.setObjectName("PlaceholderLabel")
-        layout.addWidget(self.sequence_placeholder)
-
-        layout.addStretch()
         return panel
 
     # ── Right panel ──────────────────────────────────────────────────
@@ -136,15 +130,29 @@ class MainWindow(QMainWindow):
         bookmarks = self.store.get_bookmarks(self._active_category_id)
         self.bookmark_list.load(bookmarks)
 
+    def _refresh_all(self) -> None:
+        """Full refresh — call after any data change."""
+        self.category_panel.refresh()
+        self._refresh_bookmarks()
+
     # ── Slots ────────────────────────────────────────────────────────
+
+    def _on_category_selected(self, cat_id: str | None) -> None:
+        self._active_category_id = cat_id
+        self._refresh_bookmarks()
+
+    def _on_sequence_triggered(self, seq_id: str) -> None:
+        seq = self.store.get_sequence(seq_id)
+        if seq is None:
+            return
+        errors = launch_sequence(seq, self.store)
+        if errors:
+            QMessageBox.warning(
+                self, "Sequence errors",
+                "Some items could not be launched:\n\n" + "\n".join(errors),
+            )
 
     def _on_launch_error(self, message: str) -> None:
         QMessageBox.warning(self, "Could not open", message)
 
-    # ── Helpers ──────────────────────────────────────────────────────
 
-    def _section_label(self, text: str) -> QLabel:
-        label = QLabel(text.upper())
-        label.setObjectName("SectionLabel")
-        label.setContentsMargins(12, 4, 12, 4)
-        return label

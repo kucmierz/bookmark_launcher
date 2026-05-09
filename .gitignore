@@ -16,3 +16,7 @@ bookmarks.json
 .vscode/
 .idea/
 *.swp
+
+# myFiles
+run.bat
+venv_start_info.txt
