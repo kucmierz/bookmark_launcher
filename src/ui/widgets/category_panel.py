@@ -45,7 +45,7 @@ class CategoryPanel(QWidget):
         self.cat_list.setStyleSheet(self._list_style())
         self.cat_list.setFocusPolicy(Qt.NoFocus)
         self.cat_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.cat_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.cat_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.cat_list.currentItemChanged.connect(self._on_category_changed)
         self.cat_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.cat_list.customContextMenuRequested.connect(self._on_cat_context_menu)
@@ -59,7 +59,7 @@ class CategoryPanel(QWidget):
         self.seq_list.setStyleSheet(self._list_style())
         self.seq_list.setFocusPolicy(Qt.NoFocus)
         self.seq_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.seq_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.seq_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.seq_list.itemDoubleClicked.connect(self._on_sequence_double_clicked)
         self.seq_list.installEventFilter(self)
         layout.addWidget(self.seq_list)
@@ -72,7 +72,7 @@ class CategoryPanel(QWidget):
         self.tag_list.setStyleSheet(self._list_style())
         self.tag_list.setFocusPolicy(Qt.NoFocus)
         self.tag_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.tag_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.tag_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         # Fix 3: use itemClicked instead of currentItemChanged so repeated
         # clicks on the same item are detected (currentItemChanged fires only
         # when selection actually changes).
@@ -327,4 +327,3 @@ class CategoryPanel(QWidget):
                         self._on_sequence_double_clicked(item)
                     return True
         return super().eventFilter(source, event)
-
