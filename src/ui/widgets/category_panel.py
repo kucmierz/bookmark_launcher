@@ -9,8 +9,9 @@ Clicking a sequence emits sequence_triggered.
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QListWidgetItem, QLabel, QPushButton, QMenu,
+    QScrollArea,
 )
-from PySide6.QtCore import Qt, Signal, QSize, QEvent
+from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QColor
 
 from core.data_store import DataStore
@@ -23,9 +24,9 @@ class CategoryPanel(QWidget):
 
     add_category_requested = Signal()
     add_tag_requested = Signal()
-    edit_category_requested = Signal(str)   # category id
+    edit_category_requested = Signal(str)
     delete_category_requested = Signal(str)
-    edit_tag_requested = Signal(str)        # tag id
+    edit_tag_requested = Signal(str)
     delete_tag_requested = Signal(str)
 
     def __init__(self, store: DataStore, parent: QWidget | None = None) -> None:
@@ -43,11 +44,12 @@ class CategoryPanel(QWidget):
         self.cat_list = QListWidget()
         self.cat_list.setStyleSheet(self._list_style())
         self.cat_list.setFocusPolicy(Qt.NoFocus)
-        self.cat_list.setFixedHeight(0)
+        self.cat_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.cat_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.cat_list.currentItemChanged.connect(self._on_category_changed)
         self.cat_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.cat_list.customContextMenuRequested.connect(self._on_cat_context_menu)
-        layout.addWidget(self.cat_list)
+        layout.addWidget(self.cat_list)   # no stretch — sized by content in refresh
 
         # ── Sequences ─────────────────────────────────────────────────
         layout.addSpacing(8)
@@ -56,7 +58,8 @@ class CategoryPanel(QWidget):
         self.seq_list = QListWidget()
         self.seq_list.setStyleSheet(self._list_style())
         self.seq_list.setFocusPolicy(Qt.NoFocus)
-        self.seq_list.setFixedHeight(0)
+        self.seq_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.seq_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.seq_list.itemDoubleClicked.connect(self._on_sequence_double_clicked)
         self.seq_list.installEventFilter(self)
         layout.addWidget(self.seq_list)
@@ -68,12 +71,17 @@ class CategoryPanel(QWidget):
         self.tag_list = QListWidget()
         self.tag_list.setStyleSheet(self._list_style())
         self.tag_list.setFocusPolicy(Qt.NoFocus)
-        self.tag_list.setFixedHeight(0)
-        self.tag_list.currentItemChanged.connect(self._on_tag_changed)
+        self.tag_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.tag_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # Fix 3: use itemClicked instead of currentItemChanged so repeated
+        # clicks on the same item are detected (currentItemChanged fires only
+        # when selection actually changes).
+        self.tag_list.itemClicked.connect(self._on_tag_clicked)
         self.tag_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tag_list.customContextMenuRequested.connect(self._on_tag_context_menu)
         layout.addWidget(self.tag_list)
 
+        # Spacer pushes content up but lets the panel fill remaining space
         layout.addStretch()
         self.refresh()
 
@@ -179,17 +187,23 @@ class CategoryPanel(QWidget):
                 self.tag_list.addItem(item)
 
         self.tag_list.blockSignals(False)
-
-        # Restore active tag highlight without re-emitting signal
         self._restore_selection(self.tag_list, self._active_tag_id)
         self._resize_list(self.tag_list)
 
-    def _on_tag_changed(self, current: QListWidgetItem | None, _prev) -> None:
-        if current is None:
+    def _on_tag_clicked(self, item: QListWidgetItem) -> None:
+        tag_id = item.data(Qt.UserRole)
+        if tag_id is None:
             return
-        tag_id = current.data(Qt.UserRole)
-        self._active_tag_id = tag_id
-        self.tag_selected.emit(tag_id)
+        if self._active_tag_id == tag_id:
+            # Second click on same tag → deselect
+            self._active_tag_id = None
+            self.tag_list.blockSignals(True)
+            self.tag_list.clearSelection()
+            self.tag_list.setCurrentRow(-1)
+            self.tag_list.blockSignals(False)
+        else:
+            self._active_tag_id = tag_id
+        self.tag_selected.emit(self._active_tag_id)
 
     def _on_tag_context_menu(self, pos) -> None:
         item = self.tag_list.itemAt(pos)
@@ -222,16 +236,24 @@ class CategoryPanel(QWidget):
         item = list_widget.currentItem()
         return item.data(Qt.UserRole) if item else None
 
+    def _resize_list(self, list_widget: QListWidget) -> None:
+        # Shrink-wrap to content so the list never shows a scrollbar
+        # and never causes scroll-jump when an item is clicked.
+        # 32px per row matches the item height set in the stylesheet.
+        list_widget.setFixedHeight(list_widget.count() * 32)
+
     def _restore_selection(self, list_widget: QListWidget, target_id: str | None) -> None:
         for i in range(list_widget.count()):
             if list_widget.item(i).data(Qt.UserRole) == target_id:
+                # scrollToItem would cause the jump bug — skip it by blocking
+                list_widget.blockSignals(True)
                 list_widget.setCurrentRow(i)
+                list_widget.blockSignals(False)
                 return
         if list_widget is self.cat_list:
-            list_widget.setCurrentRow(0)   # fall back to "All"
-
-    def _resize_list(self, list_widget: QListWidget) -> None:
-        list_widget.setFixedHeight(list_widget.count() * 32)
+            list_widget.blockSignals(True)
+            list_widget.setCurrentRow(0)
+            list_widget.blockSignals(False)
 
     def _section_header(self, title: str, on_add) -> QWidget:
         """Section label with optional + button on the right."""

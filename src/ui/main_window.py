@@ -177,12 +177,7 @@ class MainWindow(QMainWindow):
         self._refresh_bookmarks()
 
     def _on_tag_selected(self, tag_id: str | None) -> None:
-        # Clicking the same tag again deselects it
-        if self._active_tag_id == tag_id:
-            self._active_tag_id = None
-            self.category_panel.tag_list.clearSelection()
-        else:
-            self._active_tag_id = tag_id
+        self._active_tag_id = tag_id
         self._refresh_bookmarks()
 
     def _on_sequence_triggered(self, seq_id: str) -> None:
