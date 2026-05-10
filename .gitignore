@@ -37,7 +37,8 @@ desktop.ini
 build/
 dist/
 *.spec.bak
-icon.ico        # generated from icon.png during build
+# generated from icon.png during build
+icon.ico
 
 # App data (local user file, not part of source)
 bookmarks.json
