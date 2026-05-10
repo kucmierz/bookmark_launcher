@@ -7,10 +7,13 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QPixmap
 
 from config import APP_NAME, DATA_FILE
 from core.data_store import DataStore
 from ui.main_window import MainWindow
+from ui.tray_icon import TrayIcon
+from utils.icon_generator import generate_icon
 
 
 STYLESHEET = """
@@ -127,7 +130,6 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 
 def main() -> None:
-    # Enable high-DPI scaling before creating QApplication
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
@@ -137,6 +139,10 @@ def main() -> None:
     app.setStyle("Fusion")
     app.setStyleSheet(STYLESHEET)
 
+    # Without this, closing the last visible window would quit the app
+    # even though the tray is still running.
+    app.setQuitOnLastWindowClosed(False)
+
     store = DataStore(DATA_FILE)
     try:
         store.load()
@@ -144,8 +150,32 @@ def main() -> None:
         QMessageBox.critical(None, "Failed to load data", str(e))
         sys.exit(1)
 
+    # Generate icon on first run, load it for both window and tray
+    icon_path = generate_icon()
+    app_icon = QIcon(str(icon_path))
+    app.setWindowIcon(app_icon)
+
     window = MainWindow(store)
-    window.show()
+
+    if not QSystemTrayIcon.isSystemTrayAvailable():
+        # No tray support — run as a regular window, X = quit
+        window.show()
+        sys.exit(app.exec())
+
+    tray = TrayIcon(store, app_icon)
+
+    # Wire up tray signals
+    tray.show_window_requested.connect(window.toggle_visibility)
+    tray.quit_requested.connect(app.quit)
+
+    # Rebuild tray menu after any bookmark launch (click_count changes)
+    window.bookmark_list.bookmark_launched.connect(tray.refresh_menu)
+
+    # Honour start_minimized setting
+    if store.data.settings.start_minimized:
+        pass  # window stays hidden — tray is already visible
+    else:
+        window.show()
 
     sys.exit(app.exec())
 

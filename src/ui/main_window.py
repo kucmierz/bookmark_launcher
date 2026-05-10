@@ -379,4 +379,15 @@ class MainWindow(QMainWindow):
             self.store.delete_sequence(seq_id)
             self._refresh_all()
 
+    def closeEvent(self, event) -> None:
+        # Hide to tray instead of quitting (tray handles actual quit)
+        event.ignore()
+        self.hide()
 
+    def toggle_visibility(self) -> None:
+        if self.isVisible():
+            self.hide()
+        else:
+            self.showNormal()
+            self.activateWindow()
+            self.raise_()
