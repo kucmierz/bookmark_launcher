@@ -178,10 +178,21 @@ class DataStore:
     # ── Bookmarks ────────────────────────────────────────────────────
 
     def get_bookmarks(self, category_id: Optional[str] = None) -> list[Bookmark]:
-        """Return all bookmarks, optionally filtered by category."""
+        """Return bookmarks, optionally filtered by category, sorted by current setting."""
         bms = self.data.bookmarks
         if category_id:
             bms = [b for b in bms if category_id in b.category_ids]
+
+        match self.data.settings.sort_order:
+            case "alphabetical":
+                bms = sorted(bms, key=lambda b: b.name.lower())
+            case "by_last_used":
+                # Bookmarks never used go to the bottom
+                bms = sorted(bms, key=lambda b: b.last_used_at or datetime.min, reverse=True)
+            case _:
+                # "manual" — respect the order field
+                bms = sorted(bms, key=lambda b: b.order)
+
         return bms
 
     def get_bookmark(self, bm_id: str) -> Optional[Bookmark]:

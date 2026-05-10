@@ -178,6 +178,7 @@ class MainWindow(QMainWindow):
         self.bookmark_list = BookmarkList(self.store)
         self.bookmark_list.launch_error.connect(self._on_launch_error)
         self.bookmark_list.drop_requested.connect(self._on_drop)
+        self.bookmark_list.sort_changed.connect(self._on_sort_changed)
         self.bookmark_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.bookmark_list.customContextMenuRequested.connect(self._on_bookmark_context_menu)
         layout.addWidget(self.bookmark_list, stretch=1)
@@ -430,6 +431,11 @@ class MainWindow(QMainWindow):
         from ui.dialogs.import_export_dialog import ExportDialog
         dlg = ExportDialog(self.store, parent=self)
         dlg.exec()
+
+    def _on_sort_changed(self, sort_order: str) -> None:
+        self.store.data.settings.sort_order = sort_order
+        self.store.save()
+        self._refresh_bookmarks()
 
     def closeEvent(self, event) -> None:
         # Hide to tray instead of quitting (tray handles actual quit)
