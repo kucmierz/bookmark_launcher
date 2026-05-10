@@ -8,6 +8,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtWidgets import QSystemTrayIcon
 
 from config import APP_NAME, DATA_FILE
 from core.data_store import DataStore
