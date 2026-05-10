@@ -24,10 +24,13 @@ class CategoryPanel(QWidget):
 
     add_category_requested = Signal()
     add_tag_requested = Signal()
+    add_sequence_requested = Signal()
     edit_category_requested = Signal(str)
     delete_category_requested = Signal(str)
     edit_tag_requested = Signal(str)
     delete_tag_requested = Signal(str)
+    edit_sequence_requested = Signal(str)
+    delete_sequence_requested = Signal(str)
 
     def __init__(self, store: DataStore, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -53,7 +56,7 @@ class CategoryPanel(QWidget):
 
         # ── Sequences ─────────────────────────────────────────────────
         layout.addSpacing(8)
-        layout.addWidget(self._section_header("Sequences", None))
+        layout.addWidget(self._section_header("Sequences", self._on_add_sequence))
 
         self.seq_list = QListWidget()
         self.seq_list.setStyleSheet(self._list_style())
@@ -62,6 +65,8 @@ class CategoryPanel(QWidget):
         self.seq_list.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.seq_list.itemDoubleClicked.connect(self._on_sequence_double_clicked)
         self.seq_list.installEventFilter(self)
+        self.seq_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.seq_list.customContextMenuRequested.connect(self._on_seq_context_menu)
         layout.addWidget(self.seq_list)
 
         # ── Tags ──────────────────────────────────────────────────────
@@ -161,6 +166,23 @@ class CategoryPanel(QWidget):
 
         self._resize_list(self.seq_list)
 
+    def _on_seq_context_menu(self, pos) -> None:
+        item = self.seq_list.itemAt(pos)
+        if item is None:
+            return
+        seq_id = item.data(Qt.UserRole)
+        if seq_id is None:
+            return
+        menu = self._make_context_menu()
+        edit_action = menu.addAction("✏  Edit")
+        menu.addSeparator()
+        delete_action = menu.addAction("🗑  Delete")
+        action = menu.exec(self.seq_list.mapToGlobal(pos))
+        if action == edit_action:
+            self.edit_sequence_requested.emit(seq_id)
+        elif action == delete_action:
+            self.delete_sequence_requested.emit(seq_id)
+
     def _on_sequence_double_clicked(self, item: QListWidgetItem) -> None:
         seq_id = item.data(Qt.UserRole)
         if seq_id:
@@ -229,6 +251,9 @@ class CategoryPanel(QWidget):
 
     def _on_add_tag(self) -> None:
         self.add_tag_requested.emit()
+
+    def _on_add_sequence(self) -> None:
+        self.add_sequence_requested.emit()
 
     # ── Helpers ───────────────────────────────────────────────────────
 
@@ -327,3 +352,4 @@ class CategoryPanel(QWidget):
                         self._on_sequence_double_clicked(item)
                     return True
         return super().eventFilter(source, event)
+

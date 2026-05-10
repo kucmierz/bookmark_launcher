@@ -25,6 +25,7 @@ from ui.widgets.bookmark_list import BookmarkList
 from ui.widgets.category_panel import CategoryPanel
 from ui.dialogs.bookmark_dialog import BookmarkDialog
 from ui.dialogs.tag_dialog import TagDialog
+from ui.dialogs.sequence_dialog import SequenceDialog
 
 
 class MainWindow(QMainWindow):
@@ -112,10 +113,13 @@ class MainWindow(QMainWindow):
         self.category_panel.sequence_triggered.connect(self._on_sequence_triggered)
         self.category_panel.add_category_requested.connect(self._on_add_category)
         self.category_panel.add_tag_requested.connect(self._on_add_tag)
+        self.category_panel.add_sequence_requested.connect(self._on_add_sequence)
         self.category_panel.edit_category_requested.connect(self._on_edit_category)
         self.category_panel.delete_category_requested.connect(self._on_delete_category)
         self.category_panel.edit_tag_requested.connect(self._on_edit_tag)
         self.category_panel.delete_tag_requested.connect(self._on_delete_tag)
+        self.category_panel.edit_sequence_requested.connect(self._on_edit_sequence)
+        self.category_panel.delete_sequence_requested.connect(self._on_delete_sequence)
         layout.addWidget(self.category_panel)
 
         return panel
@@ -345,6 +349,34 @@ class MainWindow(QMainWindow):
             self.store.delete_tag(tag_id)
             if self._active_tag_id == tag_id:
                 self._active_tag_id = None
+            self._refresh_all()
+
+    # ── Sequence CRUD ─────────────────────────────────────────────────
+
+    def _on_add_sequence(self) -> None:
+        dlg = SequenceDialog(self.store, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_edit_sequence(self, seq_id: str) -> None:
+        seq = self.store.get_sequence(seq_id)
+        if seq is None:
+            return
+        dlg = SequenceDialog(self.store, sequence=seq, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_delete_sequence(self, seq_id: str) -> None:
+        seq = self.store.get_sequence(seq_id)
+        if seq is None:
+            return
+        answer = QMessageBox.question(
+            self, "Delete sequence",
+            f"Delete \"{seq.name}\"?\nThis cannot be undone.",
+            QMessageBox.Yes | QMessageBox.Cancel,
+        )
+        if answer == QMessageBox.Yes:
+            self.store.delete_sequence(seq_id)
             self._refresh_all()
 
 
