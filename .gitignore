@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *.pyo
 .venv/
+venv/
+env/
+*.pyd
+.Python
 
 # PyInstaller build output
 build/
@@ -16,7 +20,24 @@ bookmarks.json
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # myFiles
 run.bat
+build.bat
 venv_start_info.txt
+BUILD_CHECKLIST.md
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PyInstaller build artifacts — dist goes to bookmark_launcher_dist (outside repo)
+build/
+dist/
+*.spec.bak
+icon.ico        # generated from icon.png during build
+
+# App data (local user file, not part of source)
+bookmarks.json
