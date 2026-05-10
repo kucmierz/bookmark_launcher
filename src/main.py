@@ -78,6 +78,18 @@ QLabel#SectionLabel {
     font-weight: bold;
     letter-spacing: 1px;
 }
+QPushButton#SectionAddButton {
+    background-color: transparent;
+    color: #6c7086;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 0;
+}
+QPushButton#SectionAddButton:hover {
+    background-color: #313244;
+    color: #cdd6f4;
+}
 QLabel#PlaceholderLabel {
     color: #585b70;
     font-size: 12px;

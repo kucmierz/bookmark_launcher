@@ -24,6 +24,7 @@ from core.search import filter_bookmarks
 from ui.widgets.bookmark_list import BookmarkList
 from ui.widgets.category_panel import CategoryPanel
 from ui.dialogs.bookmark_dialog import BookmarkDialog
+from ui.dialogs.tag_dialog import TagDialog
 
 
 class MainWindow(QMainWindow):
@@ -31,6 +32,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.store = store
         self._active_category_id: str | None = None  # None = show all
+        self._active_tag_id: str | None = None        # None = no tag filter
 
         self.setWindowTitle(APP_NAME)
         self.setMinimumSize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
@@ -106,7 +108,14 @@ class MainWindow(QMainWindow):
 
         self.category_panel = CategoryPanel(self.store)
         self.category_panel.category_selected.connect(self._on_category_selected)
+        self.category_panel.tag_selected.connect(self._on_tag_selected)
         self.category_panel.sequence_triggered.connect(self._on_sequence_triggered)
+        self.category_panel.add_category_requested.connect(self._on_add_category)
+        self.category_panel.add_tag_requested.connect(self._on_add_tag)
+        self.category_panel.edit_category_requested.connect(self._on_edit_category)
+        self.category_panel.delete_category_requested.connect(self._on_delete_category)
+        self.category_panel.edit_tag_requested.connect(self._on_edit_tag)
+        self.category_panel.delete_tag_requested.connect(self._on_delete_tag)
         layout.addWidget(self.category_panel)
 
         return panel
@@ -133,8 +142,11 @@ class MainWindow(QMainWindow):
     # ── Data refresh ─────────────────────────────────────────────────
 
     def _refresh_bookmarks(self) -> None:
-        """Reload and filter bookmark list — respects both category and search."""
+        """Reload and filter bookmark list — respects category, tag, and search."""
         bookmarks = self.store.get_bookmarks(self._active_category_id)
+
+        if self._active_tag_id:
+            bookmarks = [b for b in bookmarks if self._active_tag_id in b.tag_ids]
 
         query = self.search_box.text()
         if query.strip():
@@ -162,6 +174,15 @@ class MainWindow(QMainWindow):
 
     def _on_category_selected(self, cat_id: str | None) -> None:
         self._active_category_id = cat_id
+        self._refresh_bookmarks()
+
+    def _on_tag_selected(self, tag_id: str | None) -> None:
+        # Clicking the same tag again deselects it
+        if self._active_tag_id == tag_id:
+            self._active_tag_id = None
+            self.category_panel.tag_list.clearSelection()
+        else:
+            self._active_tag_id = tag_id
         self._refresh_bookmarks()
 
     def _on_sequence_triggered(self, seq_id: str) -> None:
@@ -268,3 +289,67 @@ class MainWindow(QMainWindow):
             self._on_edit_bookmark(bm.id)
         elif action == delete_action:
             self._on_delete_bookmark(bm.id)
+
+    # ── Category CRUD ─────────────────────────────────────────────────
+
+    def _on_add_category(self) -> None:
+        from ui.dialogs.category_dialog import CategoryDialog
+        dlg = CategoryDialog(self.store, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_edit_category(self, cat_id: str) -> None:
+        from ui.dialogs.category_dialog import CategoryDialog
+        cat = self.store.get_category(cat_id)
+        if cat is None:
+            return
+        dlg = CategoryDialog(self.store, category=cat, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_delete_category(self, cat_id: str) -> None:
+        cat = self.store.get_category(cat_id)
+        if cat is None:
+            return
+        answer = QMessageBox.question(
+            self, "Delete category",
+            f"Delete \"{cat.name}\"?\nBookmarks in this category won't be deleted.",
+            QMessageBox.Yes | QMessageBox.Cancel,
+        )
+        if answer == QMessageBox.Yes:
+            self.store.delete_category(cat_id)
+            if self._active_category_id == cat_id:
+                self._active_category_id = None
+            self._refresh_all()
+
+    # ── Tag CRUD ──────────────────────────────────────────────────────
+
+    def _on_add_tag(self) -> None:
+        dlg = TagDialog(self.store, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_edit_tag(self, tag_id: str) -> None:
+        tag = self.store.get_tag(tag_id)
+        if tag is None:
+            return
+        dlg = TagDialog(self.store, tag=tag, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_delete_tag(self, tag_id: str) -> None:
+        tag = self.store.get_tag(tag_id)
+        if tag is None:
+            return
+        answer = QMessageBox.question(
+            self, "Delete tag",
+            f"Delete tag \"{tag.name}\"?\nIt will be removed from all bookmarks.",
+            QMessageBox.Yes | QMessageBox.Cancel,
+        )
+        if answer == QMessageBox.Yes:
+            self.store.delete_tag(tag_id)
+            if self._active_tag_id == tag_id:
+                self._active_tag_id = None
+            self._refresh_all()
+
+
