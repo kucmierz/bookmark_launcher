@@ -24,6 +24,16 @@ SORT_OPTIONS = [
 ]
 
 
+class _ReorderableList(QListWidget):
+    """QListWidget that emits a signal after internal drag&drop reorder."""
+    reordered = Signal()
+
+    def dropEvent(self, event) -> None:
+        super().dropEvent(event)
+        # Emit after Qt has already moved the item visually
+        if event.source() is self:
+            self.reordered.emit()
+
 class BookmarkList(QWidget):
     launch_error = Signal(str)
     bookmark_launched = Signal(str)
@@ -110,13 +120,15 @@ class BookmarkList(QWidget):
         return bar
 
     def _build_list(self) -> QListWidget:
-        self.list_widget = QListWidget()
+        # self.list_widget = QListWidget()
+        self.list_widget = _ReorderableList()
         self.list_widget.setSpacing(1)
         self.list_widget.setIconSize(QSize(20, 20))
         self.list_widget.setFocusPolicy(Qt.StrongFocus)
         self.list_widget.setAlternatingRowColors(False)
         self.list_widget.setStyleSheet(self._list_style())
         self.list_widget.itemDoubleClicked.connect(self._on_item_activated)
+        self.list_widget.reordered.connect(self._on_reorder)
         self.list_widget.installEventFilter(self)
         return self.list_widget
 
@@ -217,11 +229,6 @@ class BookmarkList(QWidget):
                     if item:
                         self._on_item_activated(item)
                     return True
-            if event.type() == QEvent.Drop:
-                # Let Qt handle the visual reorder first, then persist
-                result = super().eventFilter(source, event)
-                self._on_reorder()
-                return result
         return super().eventFilter(source, event)
 
     # ── Explorer drag&drop ───────────────────────────────────────────

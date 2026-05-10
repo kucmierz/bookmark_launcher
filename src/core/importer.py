@@ -36,6 +36,19 @@ def export_bookmarks(bookmarks: list[Bookmark], store: DataStore, dest_path: Pat
         encoding="utf-8",
     )
 
+# ── Result type ──────────────────────────────────────────────────────
+
+
+class ImportResult:
+    def __init__(self, imported: int, skipped: int) -> None:
+        self.imported = imported
+        self.skipped = skipped
+
+    def summary(self) -> str:
+        parts = [f"{self.imported} bookmark(s) imported"]
+        if self.skipped:
+            parts.append(f"{self.skipped} skipped (already exist)")
+        return ", ".join(parts) + "."
 
 def import_bookmarks(source_path: Path, store: DataStore) -> ImportResult:
     """
@@ -77,21 +90,6 @@ def import_bookmarks(source_path: Path, store: DataStore) -> ImportResult:
         imported += 1
 
     return ImportResult(imported=imported, skipped=skipped)
-
-
-# ── Result type ──────────────────────────────────────────────────────
-
-
-class ImportResult:
-    def __init__(self, imported: int, skipped: int) -> None:
-        self.imported = imported
-        self.skipped = skipped
-
-    def summary(self) -> str:
-        parts = [f"{self.imported} bookmark(s) imported"]
-        if self.skipped:
-            parts.append(f"{self.skipped} skipped (already exist)")
-        return ", ".join(parts) + "."
 
 
 # ── Private helpers ──────────────────────────────────────────────────
