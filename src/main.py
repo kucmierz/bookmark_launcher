@@ -158,6 +158,43 @@ def main() -> None:
 
     window = MainWindow(store)
 
+    def apply_tray_setting() -> None:
+        """Create or destroy tray icon based on current show_in_tray setting."""
+        if store.data.settings.show_in_tray:
+            if not hasattr(app, "_tray") or app._tray is None:
+                if not QSystemTrayIcon.isSystemTrayAvailable():
+                    return
+                app._tray = TrayIcon(store, app_icon)
+                app._tray.show_window_requested.connect(window.toggle_visibility)
+                app._tray.quit_requested.connect(app.quit)
+                window.bookmark_list.bookmark_launched.connect(app._tray.refresh_menu)
+        else:
+            if hasattr(app, "_tray") and app._tray is not None:
+                app._tray.hide_tray()
+                app._tray = None
+            # Tray is off — closing window quits the app
+            app.setQuitOnLastWindowClosed(True)
+
+    def on_settings_changed() -> None:
+        apply_tray_setting()
+        # If tray was just turned off and window is hidden, show it
+        if not store.data.settings.show_in_tray and not window.isVisible():
+            window.show()
+
+    window.settings_changed.connect(on_settings_changed)
+
+    if not QSystemTrayIcon.isSystemTrayAvailable():
+        window.show()
+        sys.exit(app.exec())
+
+    app._tray = None
+    apply_tray_setting()
+
+    if store.data.settings.start_minimized and store.data.settings.show_in_tray:
+        pass  # stay hidden — tray is visible
+    else:
+        window.show()
+
     if not QSystemTrayIcon.isSystemTrayAvailable():
         # No tray support — run as a regular window, X = quit
         window.show()

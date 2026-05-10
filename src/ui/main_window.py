@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QSplitter, QPushButton, QLineEdit, QFrame,
     QMessageBox, QMenu,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon
 
 from config import (
@@ -29,6 +29,9 @@ from ui.dialogs.sequence_dialog import SequenceDialog
 
 
 class MainWindow(QMainWindow):
+
+    settings_changed = Signal() 
+
     def __init__(self, store: DataStore) -> None:
         super().__init__()
         self.store = store
@@ -114,6 +117,11 @@ class MainWindow(QMainWindow):
                 margin: 4px 0;
             }
         """)
+
+        settings_action = menu.addAction("⚙  Settings…")
+        settings_action.triggered.connect(self._on_settings)
+
+        menu.addSeparator()
 
         import_action = menu.addAction("📥  Import bookmarks…")
         import_action.triggered.connect(self._on_import)
@@ -421,6 +429,14 @@ class MainWindow(QMainWindow):
             self.store.delete_sequence(seq_id)
             self._refresh_all()
 
+    def _on_settings(self) -> None:
+        from ui.dialogs.settings_dialog import SettingsDialog
+        dlg = SettingsDialog(self.store, parent=self)
+        if dlg.exec():
+            self.settings_changed.emit()
+            # Sort order could have changed — refresh the list
+            self._refresh_bookmarks()
+
     def _on_import(self) -> None:
         from ui.dialogs.import_export_dialog import ImportDialog
         dlg = ImportDialog(self.store, parent=self)
@@ -439,8 +455,11 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         # Hide to tray instead of quitting (tray handles actual quit)
-        event.ignore()
-        self.hide()
+        if self.store.data.settings.show_in_tray:
+            event.ignore()
+            self.hide()
+        else:
+            event.accept()
 
     def toggle_visibility(self) -> None:
         if self.isVisible():
