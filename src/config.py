@@ -3,12 +3,15 @@ Central configuration — paths, defaults, constants.
 Import this anywhere in the app instead of hardcoding strings.
 """
 
+import sys
 from pathlib import Path
 
-# Resolve the app root: when running from src/, go one level up.
-# PyInstaller sets sys._MEIPASS; we don't need it here because
-# bookmarks.json always lives next to the executable / project root.
-APP_ROOT = Path(__file__).parent.parent
+# When frozen by PyInstaller, sys.executable is the .exe file.
+# When running from source, __file__ is src/config.py — go one level up.
+if getattr(sys, "frozen", False):
+    APP_ROOT = Path(sys.executable).parent
+else:
+    APP_ROOT = Path(__file__).parent.parent
 
 DATA_FILE = APP_ROOT / "bookmarks.json"
 
