@@ -75,13 +75,21 @@ class MainWindow(QMainWindow):
         self.btn_add.clicked.connect(self._on_add_bookmark)
         layout.addWidget(self.btn_add)
 
-        self.btn_settings = QPushButton("⚙")
+        # self.btn_settings = QPushButton("⚙")
+        self.btn_settings = QPushButton("☰")
         self.btn_settings.setFixedSize(32, 32)
         self.btn_settings.setToolTip("Settings")
-        self.btn_settings.setMenu(self._build_settings_menu())  # ← jedyna zmiana
+        # self.btn_settings.setMenu(self._build_settings_menu())
+        self.btn_settings.clicked.connect(self._on_settings_clicked)
         layout.addWidget(self.btn_settings)
 
         return header
+
+    def _on_settings_clicked(self) -> None:
+        menu = self._build_settings_menu()
+        # Show menu directly below the button
+        pos = self.btn_settings.mapToGlobal(self.btn_settings.rect().bottomLeft())
+        menu.exec(pos)
 
     def _build_settings_menu(self) -> QMenu:
         menu = QMenu(self)
