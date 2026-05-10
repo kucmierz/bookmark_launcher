@@ -151,10 +151,10 @@ class MainWindow(QMainWindow):
     # ── Slots ────────────────────────────────────────────────────────
 
     def _on_search_changed(self, text: str) -> None:
-        # Highlight the search box border when a filter is active
+        # Show a stronger border when a filter is active, no background change
         if text.strip():
             self.search_box.setStyleSheet(
-                "QLineEdit { border-color: #89b4fa; background-color: #2a2a3e; }"
+                "QLineEdit { border: 2px solid #89b4fa; }"
             )
         else:
             self.search_box.setStyleSheet("")
@@ -268,5 +268,3 @@ class MainWindow(QMainWindow):
             self._on_edit_bookmark(bm.id)
         elif action == delete_action:
             self._on_delete_bookmark(bm.id)
-
-
