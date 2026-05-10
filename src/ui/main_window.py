@@ -434,6 +434,7 @@ class MainWindow(QMainWindow):
         dlg = SettingsDialog(self.store, parent=self)
         if dlg.exec():
             self.settings_changed.emit()
+            self.bookmark_list.sync_sort_combo()
             # Sort order could have changed — refresh the list
             self._refresh_bookmarks()
 

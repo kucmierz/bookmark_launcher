@@ -284,3 +284,14 @@ class BookmarkList(QWidget):
                 color: #cdd6f4;
             }
         """
+    
+    def sync_sort_combo(self) -> None:
+        """Update the sort dropdown to match the current setting in store."""
+        current = self.store.data.settings.sort_order
+        for i, (_, value) in enumerate(SORT_OPTIONS):
+            if value == current:
+                # Block signal so we don't trigger _on_sort_changed unnecessarily
+                self.sort_combo.blockSignals(True)
+                self.sort_combo.setCurrentIndex(i)
+                self.sort_combo.blockSignals(False)
+                break   
