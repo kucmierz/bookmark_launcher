@@ -78,9 +78,42 @@ class MainWindow(QMainWindow):
         self.btn_settings = QPushButton("⚙")
         self.btn_settings.setFixedSize(32, 32)
         self.btn_settings.setToolTip("Settings")
+        self.btn_settings.setMenu(self._build_settings_menu())  # ← jedyna zmiana
         layout.addWidget(self.btn_settings)
 
         return header
+
+    def _build_settings_menu(self) -> QMenu:
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #313244;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 6px 24px 6px 12px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #45475a;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #45475a;
+                margin: 4px 0;
+            }
+        """)
+
+        import_action = menu.addAction("📥  Import bookmarks…")
+        import_action.triggered.connect(self._on_import)
+
+        export_action = menu.addAction("📤  Export bookmarks…")
+        export_action.triggered.connect(self._on_export)
+
+        return menu
 
     # ── Body (splitter with left + right panels) ──────────────────────
 
@@ -378,6 +411,17 @@ class MainWindow(QMainWindow):
         if answer == QMessageBox.Yes:
             self.store.delete_sequence(seq_id)
             self._refresh_all()
+
+    def _on_import(self) -> None:
+        from ui.dialogs.import_export_dialog import ImportDialog
+        dlg = ImportDialog(self.store, parent=self)
+        if dlg.exec():
+            self._refresh_all()
+
+    def _on_export(self) -> None:
+        from ui.dialogs.import_export_dialog import ExportDialog
+        dlg = ExportDialog(self.store, parent=self)
+        dlg.exec()
 
     def closeEvent(self, event) -> None:
         # Hide to tray instead of quitting (tray handles actual quit)
