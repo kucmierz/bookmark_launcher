@@ -20,6 +20,7 @@ from config import (
 )
 from core.data_store import DataStore
 from core.launcher import launch_sequence
+from core.search import filter_bookmarks
 from ui.widgets.bookmark_list import BookmarkList
 from ui.widgets.category_panel import CategoryPanel
 from ui.dialogs.bookmark_dialog import BookmarkDialog
@@ -62,6 +63,7 @@ class MainWindow(QMainWindow):
         self.search_box.setPlaceholderText("🔍  Search bookmarks…")
         self.search_box.setFixedHeight(32)
         self.search_box.setClearButtonEnabled(True)
+        self.search_box.textChanged.connect(self._on_search_changed)
         layout.addWidget(self.search_box, stretch=1)
 
         self.btn_add = QPushButton("＋  Add")
@@ -131,8 +133,14 @@ class MainWindow(QMainWindow):
     # ── Data refresh ─────────────────────────────────────────────────
 
     def _refresh_bookmarks(self) -> None:
-        """Reload bookmark list from store, respecting active category filter."""
+        """Reload and filter bookmark list — respects both category and search."""
         bookmarks = self.store.get_bookmarks(self._active_category_id)
+
+        query = self.search_box.text()
+        if query.strip():
+            tag_map = {t.id: t for t in self.store.get_tags()}
+            bookmarks = filter_bookmarks(bookmarks, query, tag_map)
+
         self.bookmark_list.load(bookmarks)
 
     def _refresh_all(self) -> None:
@@ -141,6 +149,16 @@ class MainWindow(QMainWindow):
         self._refresh_bookmarks()
 
     # ── Slots ────────────────────────────────────────────────────────
+
+    def _on_search_changed(self, text: str) -> None:
+        # Highlight the search box border when a filter is active
+        if text.strip():
+            self.search_box.setStyleSheet(
+                "QLineEdit { border-color: #89b4fa; background-color: #2a2a3e; }"
+            )
+        else:
+            self.search_box.setStyleSheet("")
+        self._refresh_bookmarks()
 
     def _on_category_selected(self, cat_id: str | None) -> None:
         self._active_category_id = cat_id
